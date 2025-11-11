@@ -284,6 +284,8 @@ def ensure_session_defaults() -> None:
     st.session_state.setdefault("glossary", [])
     st.session_state.setdefault("share_mode", False)
     st.session_state.setdefault("share_applied", False)
+    st.session_state.setdefault("translation_target", "Auto (match document)")
+    st.session_state.setdefault("translated_outputs", {})
     default_model = os.getenv("GROQ_MODEL", GroqHandler.get_available_models()[0])
     st.session_state.setdefault("groq_model", default_model)
 
@@ -537,6 +539,21 @@ def render_sidebar(read_only: bool = False) -> Dict[str, Any]:
         st.session_state["answer_mode"] = answer_mode_label
 
         st.markdown("---")
+        st.subheader("🌐 Translation")
+        available_langs = ["Auto (match document)", "English", "Malayalam", "Tamil", "Telugu", "Kannada", "Hindi"]
+        previous_translation = st.session_state.get("translation_target", available_langs[0])
+        translation_target = st.selectbox(
+            "Display answers in",
+            available_langs,
+            index=available_langs.index(previous_translation)
+            if previous_translation in available_langs
+            else 0,
+        )
+        if translation_target != previous_translation:
+            st.session_state["translation_target"] = translation_target
+            st.session_state["translated_outputs"] = {}
+
+        st.markdown("---")
         st.subheader("🔍 Retrieval filters")
         documents = st.session_state["documents"]
         available_languages = sorted({doc["language"] for doc in documents})
@@ -697,6 +714,7 @@ def render_chat_interface(
                         "question": prompt,
                         "answer": answer,
                         "contexts": context_chunks,
+                        "language": response_language,
                         "timestamp": time.time(),
                     }
                 )
@@ -706,8 +724,49 @@ def render_chat_interface(
                 st.session_state["messages"].append({"role": "assistant", "content": error_msg})
 
 
-def render_export_controls(read_only: bool) -> None:
-    """Provide UI controls for exporting snippets and generating share links."""
+def render_translation_and_export_controls(handler: Optional[GroqHandler], read_only: bool) -> None:
+    """Provide translation controls plus export/share utilities."""
+    translation_target = st.session_state.get("translation_target", "Auto (match document)")
+    exchanges = st.session_state.get("exchanges", [])
+
+    st.subheader("🌐 Translation")
+    if translation_target == "Auto (match document)":
+        st.caption("Select a target language in the sidebar to enable translation.")
+    elif read_only:
+        st.caption("Translation is unavailable in shared read-only mode.")
+    elif handler is None:
+        st.warning("Provide a Groq API key to translate answers.")
+    elif not exchanges:
+        st.info("Ask a question to generate an answer before translating.")
+    else:
+        latest_idx = len(exchanges) - 1
+        latest_exchange = exchanges[latest_idx]
+        key = f"{latest_idx}:{translation_target}"
+        translated_outputs = st.session_state.setdefault("translated_outputs", {})
+        cached_translation = translated_outputs.get(key)
+
+        if cached_translation:
+            st.success(f"Translated to {translation_target}:")
+            st.markdown(cached_translation)
+            if st.button("Clear translation", key=f"clear_translation_{key}"):
+                translated_outputs.pop(key, None)
+                st.session_state["translated_outputs"] = translated_outputs
+        else:
+            if st.button(f"Translate last answer to {translation_target}", key=f"translate_last_{key}"):
+                source_lang = latest_exchange.get("language")
+                translated_text = handler.translate_text(
+                    latest_exchange["answer"],
+                    target_language=translation_target,
+                    source_language=get_language_name(source_lang) if source_lang else None,
+                )
+                if translated_text:
+                    translated_outputs[key] = translated_text
+                    st.session_state["translated_outputs"] = translated_outputs
+                    st.success(f"Translated to {translation_target}:")
+                    st.markdown(translated_text)
+                else:
+                    st.error("Translation failed. Please try again.")
+
     st.subheader("📤 Export & Share")
     exchanges = st.session_state.get("exchanges", [])
     glossary = st.session_state.get("glossary", [])
@@ -847,7 +906,7 @@ def main() -> None:
             answer_mode=sidebar_state["answer_mode"],
             read_only=True,
         )
-        render_export_controls(read_only=True)
+        render_translation_and_export_controls(handler=None, read_only=True)
         st.markdown("---")
         st.markdown(
             "Built with ❤️ using Streamlit, Qdrant, and Groq | Supports Malayalam, Tamil, Telugu, Kannada, and Tulu",
@@ -877,7 +936,7 @@ def main() -> None:
         read_only=False,
     )
 
-    render_export_controls(read_only=False)
+    render_translation_and_export_controls(handler=handler, read_only=False)
 
     st.markdown("---")
     st.markdown(

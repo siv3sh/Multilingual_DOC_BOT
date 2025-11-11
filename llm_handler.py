@@ -68,6 +68,15 @@ class GroqHandler:
         
         return optimized
     
+    TRANSLATABLE_LANGUAGES = {
+        "English": "English",
+        "Malayalam": "Malayalam",
+        "Tamil": "Tamil",
+        "Telugu": "Telugu",
+        "Kannada": "Kannada",
+        "Hindi": "Hindi",
+    }
+
     def _construct_multilingual_prompt(
         self,
         query: str,
@@ -443,6 +452,45 @@ USER QUESTION: {query_part}"""
             traceback.print_exc()
             return self._get_error_response(language)
     
+    def translate_text(
+        self,
+        text: str,
+        target_language: str,
+        source_language: Optional[str] = None,
+    ) -> str:
+        """
+        Translate the provided text into the requested language.
+        """
+        if not text.strip():
+            return ""
+
+        if target_language not in self.TRANSLATABLE_LANGUAGES:
+            return text
+
+        try:
+            source_clause = (
+                f"The original is in {source_language}. " if source_language else ""
+            )
+            system_prompt = (
+                "You are a precise translation assistant. "
+                "Preserve meaning and tone, avoid explanatory notes, and do not add citations unless present in the input."
+            )
+            user_prompt = (
+                f"{source_clause}"
+                f"Translate the following text into {target_language}. "
+                "Keep formatting (bullet points, numbering, citations) intact.\n\n"
+                f"TEXT:\n{text}"
+            )
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+            response = self._make_api_request(messages, max_retries=3)
+            return response.strip() if response else ""
+        except Exception as exc:
+            print(f"Translation failed: {exc}")
+            return ""
+
     def _get_no_context_response(self, language: str) -> str:
         """Get response when no context is available."""
         responses = {

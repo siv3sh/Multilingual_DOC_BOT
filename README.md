@@ -9,6 +9,7 @@ Interactively explore Malayalam, Tamil, Telugu, Kannada and Tulu documents with 
 - **Batch-aware ingestion** – drag & drop entire folders, track progress, skip duplicates, and capture metadata (language, upload time, size) per document.
 - **Retrieval filters** – constrain answers by language, specific filenames, or upload date windows without re-indexing content.
 - **Answer modes** – toggle between `Concise`, `Detailed with citations`, `Bullet summary`, and `Step-by-step` for the same query.
+- **On-demand translation** – pick a target language in the sidebar and translate the latest answer with a single button.
 - **Exports & sharing** – download Markdown dossiers of selected Q&A pairs and generate read-only share links (`?share=<token>`).
 - **Workspace glossary** – automatically surface key terms with contextual definitions extracted from ingested content.
 - **Code-mixed query handling** – detect Latin-script “Tanglish” queries and transliterate into native scripts before retrieval.
@@ -151,6 +152,7 @@ Open <http://localhost:8501>, paste your Groq key in the sidebar, and you’re r
 - Search inside the glossary expander to jump to relevant terminology quickly.
 
 ### Code-mixed queries
+- **Translations** – set “Display answers in” from the sidebar; press *Translate last answer* to view the response in the desired language without altering the original chat log.
 - Latin-script queries are analysed for non-English content.  
 - When transliteration improves retrieval quality, the UI notes that a transliterated variant was used.
 
