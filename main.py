@@ -138,7 +138,7 @@ def process_uploaded_batch(uploaded_files: List[Any], pipeline: RAGPipeline) -> 
 
     if new_documents:
         status_container.success(f"📚 Imported {len(new_documents)} new document(s).")
-    else:
+else:
         status_container.info("ℹ️ No new documents were added.")
 
     progress_bar.empty()
@@ -323,8 +323,10 @@ def apply_share_view() -> None:
     if st.session_state.get("share_applied"):
         return
 
-    query_params = st.experimental_get_query_params()
-    token = query_params.get("share", [None])[0]
+    query_params = st.query_params
+    token = query_params.get("share")
+    if isinstance(token, list):
+        token = token[0] if token else None
     if not token:
         return
 
@@ -375,23 +377,23 @@ def determine_document_language(
     detected_code = detect_language(raw_text)
     selection_label = None
 
-    if lang_counts and len(lang_counts) > 1:
-        st.info("Multiple languages detected in the document. Please choose a language for answers.")
+                if lang_counts and len(lang_counts) > 1:
+                    st.info("Multiple languages detected in the document. Please choose a language for answers.")
         options: List[Tuple[str, str]] = [
             (code, f"{get_language_name(code)} ({count} pages)")
             for code, count in sorted(lang_counts.items(), key=lambda item: item[1], reverse=True)
         ]
-        labels = [label for _, label in options]
+                    labels = [label for _, label in options]
         default_index = next(
             (idx for idx, (code, _) in enumerate(options) if code == detected_code),
             0,
         )
         selected_label = st.selectbox("Select document language", labels, index=default_index)
-        for code, label in options:
+                    for code, label in options:
             if label == selected_label:
                 detected_code = code
                 selection_label = label
-                break
+                            break
 
     return detected_code, selection_label
 
@@ -422,8 +424,8 @@ def process_uploaded_document(
 
         with st.spinner(f"Embedding `{uploaded_file.name}`..."):
             success = pipeline.process_document(
-                text=text,
-                filename=uploaded_file.name,
+                        text=text,
+                        filename=uploaded_file.name,
                 language=lang_code,
                 uploaded_at=uploaded_ts,
                 extra_metadata={"original_filename": uploaded_file.name},
@@ -553,7 +555,7 @@ def render_sidebar(read_only: bool = False) -> Dict[str, Any]:
             st.session_state["translation_target"] = translation_target
             st.session_state["translated_outputs"] = {}
 
-        st.markdown("---")
+    st.markdown("---")
         st.subheader("🔍 Retrieval filters")
         documents = st.session_state["documents"]
         available_languages = sorted({doc["language"] for doc in documents})
@@ -571,7 +573,7 @@ def render_sidebar(read_only: bool = False) -> Dict[str, Any]:
                 default=default_langs,
                 help="Filter retrieved chunks by language",
             )
-        else:
+    else:
             selected_languages = []
 
         if available_sources:
@@ -612,7 +614,7 @@ def render_sidebar(read_only: bool = False) -> Dict[str, Any]:
                 date_range = selected_date_range
             else:
                 date_range = (selected_date_range, selected_date_range)
-        else:
+else:
             selected_date_range = None
 
         st.session_state["selected_languages"] = selected_languages
@@ -649,7 +651,7 @@ def render_chat_interface(
     for message in st.session_state["messages"]:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-
+    
     if read_only:
         st.info("📄 This is a read-only shared view. Chat input is disabled.")
         return
@@ -663,12 +665,12 @@ def render_chat_interface(
         return
 
     st.session_state["messages"].append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            try:
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                try:
                 date_range_ts = None
                 if date_range:
                     start_dt = datetime.combine(date_range[0], datetime.min.time())
@@ -689,8 +691,8 @@ def render_chat_interface(
                     date_range_ts=date_range_ts,
                 )
 
-                if not context_chunks:
-                    st.warning("⚠️ No relevant context found. The answer may be less accurate.")
+                    if not context_chunks:
+                        st.warning("⚠️ No relevant context found. The answer may be less accurate.")
                 elif transliteration_used and transliteration_applied:
                     st.caption("🔁 Used transliterated query variant to improve retrieval.")
 
@@ -701,13 +703,13 @@ def render_chat_interface(
                 )
 
                 answer = handler.generate_answer(
-                    query=prompt,
-                    context_chunks=context_chunks,
+                        query=prompt,
+                        context_chunks=context_chunks,
                     language=response_language,
                     answer_mode=answer_mode,
-                )
-
-                st.markdown(answer)
+                    )
+                    
+                    st.markdown(answer)
                 st.session_state["messages"].append({"role": "assistant", "content": answer})
                 st.session_state["exchanges"].append(
                     {
@@ -880,7 +882,7 @@ def main() -> None:
         glossary = st.session_state.get("glossary", [])
         if not glossary:
             st.write("No glossary entries yet.")
-        else:
+                    else:
             term_search = st.text_input(
                 "Search glossary terms",
                 value="",
@@ -938,10 +940,10 @@ def main() -> None:
 
     render_translation_and_export_controls(handler=handler, read_only=False)
 
-    st.markdown("---")
-    st.markdown(
+st.markdown("---")
+st.markdown(
         "Built with ❤️ using Streamlit, Qdrant, and Groq | Supports Malayalam, Tamil, Telugu, Kannada, and Tulu",
-    )
+)
 
 
 if __name__ == "__main__":
