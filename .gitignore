@@ -1,0 +1,79 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+.env
+
+# Streamlit
+.streamlit/
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Notebooks checkpoint
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Cache
+.cache/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+# Environment files
+.env
+.env.*
+
+# Python cache and build
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+build/
+dist/
+
+# Streamlit
+.streamlit/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Notebooks and checkpoints
+.ipynb_checkpoints/
+*.ipynb
+
+# Qdrant/DB/cache
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Node (if any)
+node_modules/
+package-lock.json
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Test files and documents
+*.pdf
+*.docx
+test_*.docx
+
+# Misc
+*.cache/
+.cache/

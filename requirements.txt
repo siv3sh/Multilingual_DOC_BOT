@@ -1,0 +1,54 @@
+# Core dependencies
+streamlit>=1.50.0
+python-dotenv>=1.1.1
+
+# Document processing
+pdfplumber>=0.10.0
+docx2txt>=0.8
+PyPDF2>=3.0.0
+pypdf>=3.0.0
+
+# Language detection
+langdetect>=1.0.9
+
+# Multilingual embeddings and NLP
+sentence-transformers>=2.2.2
+transformers>=4.35.0
+torch>=2.0.0
+
+# Vector database
+qdrant-client>=1.7.0
+
+# HTTP requests
+requests>=2.31.0
+urllib3>=2.0.0
+
+# Additional utilities
+numpy>=1.24.0
+pandas>=2.0.0
+nltk>=3.8.1
+scikit-learn>=1.3.0
+
+# Optional: For better text processing
+indic-nlp-library>=0.81
+indic-transliteration>=2.3.58
+paddleocr>=2.7.0; sys_platform != 'win32'
+paddleocr==2.7.0; sys_platform == 'win32'  # Windows users pin version for wheel availability
+
+# Optional: Enhanced OCR (layout-heavy documents)
+# paddleocr>=2.7.0.3
+# paddlepaddle>=2.5.2
+
+# OCR (for image-based PDFs)
+pytesseract>=0.3.10
+pdf2image>=1.17.0
+Pillow>=10.0.0
+opencv-python-headless>=4.8.0
+
+# Image processing for better OCR
+imageio>=2.31.0
+scikit-image>=0.21.0
+
+# Production features
+tenacity>=8.2.0
+python-json-logger>=2.0.0
