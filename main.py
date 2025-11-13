@@ -138,7 +138,7 @@ def process_uploaded_batch(uploaded_files: List[Any], pipeline: RAGPipeline) -> 
 
     if new_documents:
         status_container.success(f"📚 Imported {len(new_documents)} new document(s).")
-else:
+    else:
         status_container.info("ℹ️ No new documents were added.")
 
     progress_bar.empty()
@@ -284,7 +284,6 @@ def ensure_session_defaults() -> None:
     st.session_state.setdefault("glossary", [])
     st.session_state.setdefault("share_mode", False)
     st.session_state.setdefault("share_applied", False)
-    st.session_state.setdefault("translation_target", "Auto (match document)")
     st.session_state.setdefault("translated_outputs", {})
     default_model = os.getenv("GROQ_MODEL", GroqHandler.get_available_models()[0])
     st.session_state.setdefault("groq_model", default_model)
@@ -377,23 +376,23 @@ def determine_document_language(
     detected_code = detect_language(raw_text)
     selection_label = None
 
-                if lang_counts and len(lang_counts) > 1:
-                    st.info("Multiple languages detected in the document. Please choose a language for answers.")
+    if lang_counts and len(lang_counts) > 1:
+        st.info("Multiple languages detected in the document. Please choose a language for answers.")
         options: List[Tuple[str, str]] = [
             (code, f"{get_language_name(code)} ({count} pages)")
             for code, count in sorted(lang_counts.items(), key=lambda item: item[1], reverse=True)
         ]
-                    labels = [label for _, label in options]
+        labels = [label for _, label in options]
         default_index = next(
             (idx for idx, (code, _) in enumerate(options) if code == detected_code),
             0,
         )
         selected_label = st.selectbox("Select document language", labels, index=default_index)
-                    for code, label in options:
+        for code, label in options:
             if label == selected_label:
                 detected_code = code
                 selection_label = label
-                            break
+                break
 
     return detected_code, selection_label
 
@@ -540,91 +539,76 @@ def render_sidebar(read_only: bool = False) -> Dict[str, Any]:
         )
         st.session_state["answer_mode"] = answer_mode_label
 
-        st.markdown("---")
-        st.subheader("🌐 Translation")
-        available_langs = ["Auto (match document)", "English", "Malayalam", "Tamil", "Telugu", "Kannada", "Hindi"]
-        previous_translation = st.session_state.get("translation_target", available_langs[0])
-        translation_target = st.selectbox(
-            "Display answers in",
-            available_langs,
-            index=available_langs.index(previous_translation)
-            if previous_translation in available_langs
-            else 0,
-        )
-        if translation_target != previous_translation:
-            st.session_state["translation_target"] = translation_target
-            st.session_state["translated_outputs"] = {}
-
     st.markdown("---")
-        st.subheader("🔍 Retrieval filters")
-        documents = st.session_state["documents"]
-        available_languages = sorted({doc["language"] for doc in documents})
-        available_sources = sorted({doc["filename"] for doc in documents})
+    st.subheader("🔍 Retrieval filters")
+    documents = st.session_state["documents"]
+    available_languages = sorted({doc["language"] for doc in documents})
+    available_sources = sorted({doc["filename"] for doc in documents})
 
-        if available_languages:
-            default_langs = (
-                st.session_state["selected_languages"]
-                if st.session_state["selected_languages"]
-                else available_languages
-            )
-            selected_languages = st.multiselect(
-                "Languages",
-                options=available_languages,
-                default=default_langs,
-                help="Filter retrieved chunks by language",
-            )
+    if available_languages:
+        default_langs = (
+            st.session_state["selected_languages"]
+            if st.session_state["selected_languages"]
+            else available_languages
+        )
+        selected_languages = st.multiselect(
+            "Languages",
+            options=available_languages,
+            default=default_langs,
+            help="Filter retrieved chunks by language",
+        )
     else:
-            selected_languages = []
+        selected_languages = []
 
-        if available_sources:
-            default_sources = (
-                st.session_state["selected_sources"]
-                if st.session_state["selected_sources"]
-                else available_sources
-            )
-            selected_sources = st.multiselect(
-                "Sources",
-                options=available_sources,
-                default=default_sources,
-                help="Restrict retrieval to specific documents",
-            )
+    if available_sources:
+        default_sources = (
+            st.session_state["selected_sources"]
+            if st.session_state["selected_sources"]
+            else available_sources
+        )
+        selected_sources = st.multiselect(
+            "Sources",
+            options=available_sources,
+            default=default_sources,
+            help="Restrict retrieval to specific documents",
+        )
+    else:
+        selected_sources = []
+
+    date_range = None
+    if documents:
+        upload_dates = [
+            datetime.fromtimestamp(doc["uploaded_at"]).date() for doc in documents
+        ]
+        min_date = min(upload_dates)
+        max_date = max(upload_dates)
+        stored_range = st.session_state.get("date_range")
+        default_range = (
+            stored_range
+            if stored_range
+            else (min_date, max_date)
+        )
+        selected_date_range = st.date_input(
+            "Upload date range",
+            value=default_range,
+            min_value=min_date,
+            max_value=max_date,
+        )
+        if isinstance(selected_date_range, tuple) and len(selected_date_range) == 2:
+            date_range = selected_date_range
         else:
-            selected_sources = []
+            date_range = (selected_date_range, selected_date_range)
+    else:
+        selected_date_range = None
 
-        date_range = None
-        if documents:
-            upload_dates = [
-                datetime.fromtimestamp(doc["uploaded_at"]).date() for doc in documents
-            ]
-            min_date = min(upload_dates)
-            max_date = max(upload_dates)
-            stored_range = st.session_state.get("date_range")
-            default_range = (
-                stored_range
-                if stored_range
-                else (min_date, max_date)
-            )
-            selected_date_range = st.date_input(
-                "Upload date range",
-                value=default_range,
-                min_value=min_date,
-                max_value=max_date,
-            )
-            if isinstance(selected_date_range, tuple) and len(selected_date_range) == 2:
-                date_range = selected_date_range
-            else:
-                date_range = (selected_date_range, selected_date_range)
-else:
-            selected_date_range = None
+    st.session_state["selected_languages"] = selected_languages
+    st.session_state["selected_sources"] = selected_sources
+    st.session_state["date_range"] = date_range
 
-        st.session_state["selected_languages"] = selected_languages
-        st.session_state["selected_sources"] = selected_sources
-        st.session_state["date_range"] = date_range
-
-        if st.button("🗑️ Clear chat history", use_container_width=True, disabled=read_only):
-            st.session_state["messages"] = []
-            st.session_state["exchanges"] = []
-            st.experimental_rerun()
+    if st.button("🗑️ Clear chat history", use_container_width=True, disabled=read_only):
+        st.session_state["messages"] = []
+        st.session_state["exchanges"] = []
+        st.experimental_rerun()
 
     return {
         "api_key": api_key,
@@ -648,9 +632,98 @@ def render_chat_interface(
     read_only: bool,
 ) -> None:
     """Display chat history and handle new prompts."""
+    exchanges = st.session_state.get("exchanges", [])
+    translated_outputs = st.session_state.get("translated_outputs", {})
+    assistant_msg_count = 0
+    
     for message in st.session_state["messages"]:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
+    
+            # Show source verification and translation for assistant messages
+            if message["role"] == "assistant":
+                # Find corresponding exchange
+                if assistant_msg_count < len(exchanges):
+                    exchange = exchanges[assistant_msg_count]
+                    context_chunks = exchange.get("contexts", [])
+                    response_language = exchange.get("language", "en")
+                    
+                    # Show source verification
+                    if context_chunks:
+                        st.markdown("---")
+                        with st.expander("📄 View Source Documents & Context", expanded=False):
+                            st.markdown("### Source Verification")
+                            
+                            # Group chunks by document
+                            doc_sources = {}
+                            for chunk in context_chunks:
+                                filename = chunk.get("filename", "Unknown")
+                                if filename not in doc_sources:
+                                    doc_sources[filename] = []
+                                doc_sources[filename].append(chunk)
+                            
+                            # Show document sources
+                            st.markdown(f"**📚 Documents Used:** {len(doc_sources)} document(s)")
+                            for idx, (filename, chunks) in enumerate(doc_sources.items(), 1):
+                                st.markdown(f"**{idx}. {filename}**")
+                                st.markdown(f"   - Chunks used: {len(chunks)}")
+                                for chunk in chunks:
+                                    chunk_idx = chunk.get("chunk_index", "?")
+                                    score = chunk.get("score", 0)
+                                    st.markdown(f"   - Chunk #{chunk_idx} (relevance: {score:.3f})")
+                            
+                            st.markdown("---")
+                            st.markdown("### Retrieved Context Chunks")
+                            
+                            # Show actual context text
+                            for idx, chunk in enumerate(context_chunks, 1):
+                                filename = chunk.get("filename", "Unknown")
+                                chunk_idx = chunk.get("chunk_index", "?")
+                                chunk_text = chunk.get("text", "")
+                                score = chunk.get("score", 0)
+                                
+                                with st.expander(f"Chunk {idx}: {filename} (Chunk #{chunk_idx}, Score: {score:.3f})", expanded=False):
+                                    st.markdown(f"**Source:** `{filename}` | **Chunk Index:** `{chunk_idx}` | **Relevance Score:** `{score:.3f}`")
+                                    st.markdown("---")
+                                    st.markdown("**Context Text:**")
+                                    st.text_area(
+                                        "",
+                                        value=chunk_text,
+                                        height=150,
+                                        disabled=True,
+                                        key=f"context_hist_{assistant_msg_count}_{idx}",
+                                        label_visibility="collapsed",
+                                    )
+                    else:
+                        st.warning("⚠️ **No source documents found.** This answer may not be based on your uploaded documents.")
+                    
+                    # Show translation button for assistant messages that are not in English
+                    if handler and not read_only and response_language != "en":
+                        translation_key = f"translation_{assistant_msg_count}"
+                        cached_translation = translated_outputs.get(translation_key)
+                        
+                        if cached_translation:
+                            st.markdown("---")
+                            st.markdown("**English Translation:**")
+                            st.markdown(cached_translation)
+                            if st.button("🔄 Hide translation", key=f"hide_trans_{translation_key}_{assistant_msg_count}"):
+                                translated_outputs.pop(translation_key, None)
+                                st.session_state["translated_outputs"] = translated_outputs
+                                st.rerun()
+                        else:
+                            if st.button("🌐 Translate to English", key=f"translate_{translation_key}_{assistant_msg_count}"):
+                                with st.spinner("Translating to English..."):
+                                    translated_text = handler.translate_text(
+                                        message["content"],
+                                        target_language="English",
+                                    )
+                                    if translated_text:
+                                        translated_outputs[translation_key] = translated_text
+                                        st.session_state["translated_outputs"] = translated_outputs
+                                        st.rerun()
+                                    else:
+                                        st.error("Translation failed. Please try again.")
+                assistant_msg_count += 1
     
     if read_only:
         st.info("📄 This is a read-only shared view. Chat input is disabled.")
@@ -665,110 +738,169 @@ def render_chat_interface(
         return
 
     st.session_state["messages"].append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    with st.chat_message("user"):
+        st.markdown(prompt)
         
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                try:
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            try:
                 date_range_ts = None
                 if date_range:
                     start_dt = datetime.combine(date_range[0], datetime.min.time())
                     end_dt = datetime.combine(date_range[1], datetime.max.time())
                     date_range_ts = (start_dt.timestamp(), end_dt.timestamp())
 
+                # Auto-detect query language if no language filter is selected
+                effective_language_filters = language_filters
+                if not effective_language_filters:
+                    detected_query_lang = detect_language(prompt)
+                    if detected_query_lang and detected_query_lang != "en":
+                        # Use detected language as filter to prevent cross-language retrieval
+                        effective_language_filters = [detected_query_lang]
+                        st.caption(f"🔍 Auto-detected query language: {get_language_name(detected_query_lang)}. Filtering results to this language.")
+                
                 query_variants, transliteration_applied = generate_query_variants(
                     prompt,
-                    language_filters,
+                    effective_language_filters or language_filters,
                 )
 
                 context_chunks, transliteration_used = gather_context_chunks(
                     pipeline=pipeline,
                     query_variants=query_variants,
                     top_k=3,
-                    language_filters=language_filters,
+                    language_filters=effective_language_filters or language_filters,
                     source_filters=source_filters,
                     date_range_ts=date_range_ts,
                 )
 
-                    if not context_chunks:
-                        st.warning("⚠️ No relevant context found. The answer may be less accurate.")
+                # Post-retrieval filter: Remove chunks that don't match the query language
+                if effective_language_filters and context_chunks:
+                    filtered_chunks = [
+                        chunk for chunk in context_chunks
+                        if chunk.get('language') in effective_language_filters
+                    ]
+                    if filtered_chunks:
+                        context_chunks = filtered_chunks
+                    elif context_chunks:
+                        # If all chunks were filtered out but we have chunks, warn but keep them
+                        st.warning("⚠️ Some retrieved chunks don't match the query language. Showing all results.")
+                
+                if not context_chunks:
+                    st.warning("⚠️ No relevant context found. The answer may be less accurate.")
                 elif transliteration_used and transliteration_applied:
                     st.caption("🔁 Used transliterated query variant to improve retrieval.")
 
                 response_language = (
-                    language_filters[0]
-                    if language_filters
+                    (effective_language_filters or language_filters)[0]
+                    if (effective_language_filters or language_filters)
                     else (context_chunks[0]['language'] if context_chunks else "en")
                 )
 
                 answer = handler.generate_answer(
-                        query=prompt,
-                        context_chunks=context_chunks,
+                    query=prompt,
+                    context_chunks=context_chunks,
                     language=response_language,
                     answer_mode=answer_mode,
-                    )
-                    
-                    st.markdown(answer)
-                st.session_state["messages"].append({"role": "assistant", "content": answer})
-                st.session_state["exchanges"].append(
-                    {
-                        "question": prompt,
-                        "answer": answer,
-                        "contexts": context_chunks,
-                        "language": response_language,
-                        "timestamp": time.time(),
-                    }
                 )
+
+                st.markdown(answer)
+                    
+                # Show source verification
+                if context_chunks:
+                    st.markdown("---")
+                    with st.expander("📄 View Source Documents & Context", expanded=False):
+                        st.markdown("### Source Verification")
+                        
+                        # Group chunks by document
+                        doc_sources = {}
+                        for chunk in context_chunks:
+                            filename = chunk.get("filename", "Unknown")
+                            if filename not in doc_sources:
+                                doc_sources[filename] = []
+                            doc_sources[filename].append(chunk)
+                        
+                        # Show document sources
+                        st.markdown(f"**📚 Documents Used:** {len(doc_sources)} document(s)")
+                        for idx, (filename, chunks) in enumerate(doc_sources.items(), 1):
+                            st.markdown(f"**{idx}. {filename}**")
+                            st.markdown(f"   - Chunks used: {len(chunks)}")
+                            for chunk in chunks:
+                                chunk_idx = chunk.get("chunk_index", "?")
+                                score = chunk.get("score", 0)
+                                st.markdown(f"   - Chunk #{chunk_idx} (relevance: {score:.3f})")
+                        
+                        st.markdown("---")
+                        st.markdown("### Retrieved Context Chunks")
+                        
+                        # Show actual context text
+                        for idx, chunk in enumerate(context_chunks, 1):
+                            filename = chunk.get("filename", "Unknown")
+                            chunk_idx = chunk.get("chunk_index", "?")
+                            chunk_text = chunk.get("text", "")
+                            score = chunk.get("score", 0)
+                            
+                            with st.expander(f"Chunk {idx}: {filename} (Chunk #{chunk_idx}, Score: {score:.3f})", expanded=False):
+                                st.markdown(f"**Source:** `{filename}` | **Chunk Index:** `{chunk_idx}` | **Relevance Score:** `{score:.3f}`")
+                                st.markdown("---")
+                                st.markdown("**Context Text:**")
+                                st.text_area(
+                                    "",
+                                    value=chunk_text,
+                                    height=150,
+                                    disabled=True,
+                                    key=f"context_{len(st.session_state.get('exchanges', []))}_{idx}",
+                                    label_visibility="collapsed",
+                                )
+                else:
+                    st.warning("⚠️ **No source documents found.** This answer may not be based on your uploaded documents.")
+                
+                # Store exchange first to get the correct index
+                st.session_state["messages"].append({"role": "assistant", "content": answer})
+                exchange = {
+                    "question": prompt,
+                    "answer": answer,
+                    "contexts": context_chunks,
+                    "language": response_language,
+                    "timestamp": time.time(),
+                }
+                st.session_state["exchanges"].append(exchange)
+                
+                # Add "Translate to English" button if answer is not in English
+                if response_language != "en" and handler:
+                    exchange_idx = len(st.session_state.get("exchanges", [])) - 1
+                    translation_key = f"translation_{exchange_idx}"
+                    translated_outputs = st.session_state.setdefault("translated_outputs", {})
+                    cached_translation = translated_outputs.get(translation_key)
+                    
+                    if cached_translation:
+                        st.markdown("---")
+                        st.markdown("**English Translation:**")
+                        st.markdown(cached_translation)
+                        if st.button("🔄 Hide translation", key=f"hide_trans_{translation_key}"):
+                            translated_outputs.pop(translation_key, None)
+                            st.session_state["translated_outputs"] = translated_outputs
+                            st.rerun()
+                    else:
+                        if st.button("🌐 Translate to English", key=f"translate_{translation_key}"):
+                            with st.spinner("Translating to English..."):
+                                translated_text = handler.translate_text(
+                                    answer,
+                                    target_language="English",
+                                )
+                                if translated_text:
+                                    translated_outputs[translation_key] = translated_text
+                                    st.session_state["translated_outputs"] = translated_outputs
+                                    st.rerun()
+                                else:
+                                    st.error("Translation failed. Please try again.")
             except Exception as exc:
                 error_msg = f"❌ Error generating response: {exc}"
                 st.error(error_msg)
                 st.session_state["messages"].append({"role": "assistant", "content": error_msg})
 
 
-def render_translation_and_export_controls(handler: Optional[GroqHandler], read_only: bool) -> None:
-    """Provide translation controls plus export/share utilities."""
-    translation_target = st.session_state.get("translation_target", "Auto (match document)")
-    exchanges = st.session_state.get("exchanges", [])
-
-    st.subheader("🌐 Translation")
-    if translation_target == "Auto (match document)":
-        st.caption("Select a target language in the sidebar to enable translation.")
-    elif read_only:
-        st.caption("Translation is unavailable in shared read-only mode.")
-    elif handler is None:
-        st.warning("Provide a Groq API key to translate answers.")
-    elif not exchanges:
-        st.info("Ask a question to generate an answer before translating.")
-    else:
-        latest_idx = len(exchanges) - 1
-        latest_exchange = exchanges[latest_idx]
-        key = f"{latest_idx}:{translation_target}"
-        translated_outputs = st.session_state.setdefault("translated_outputs", {})
-        cached_translation = translated_outputs.get(key)
-
-        if cached_translation:
-            st.success(f"Translated to {translation_target}:")
-            st.markdown(cached_translation)
-            if st.button("Clear translation", key=f"clear_translation_{key}"):
-                translated_outputs.pop(key, None)
-                st.session_state["translated_outputs"] = translated_outputs
-        else:
-            if st.button(f"Translate last answer to {translation_target}", key=f"translate_last_{key}"):
-                source_lang = latest_exchange.get("language")
-                translated_text = handler.translate_text(
-                    latest_exchange["answer"],
-                    target_language=translation_target,
-                    source_language=get_language_name(source_lang) if source_lang else None,
-                )
-                if translated_text:
-                    translated_outputs[key] = translated_text
-                    st.session_state["translated_outputs"] = translated_outputs
-                    st.success(f"Translated to {translation_target}:")
-                    st.markdown(translated_text)
-                else:
-                    st.error("Translation failed. Please try again.")
-
+def render_export_controls(read_only: bool) -> None:
+    """Provide export/share utilities."""
     st.subheader("📤 Export & Share")
     exchanges = st.session_state.get("exchanges", [])
     glossary = st.session_state.get("glossary", [])
@@ -882,7 +1014,7 @@ def main() -> None:
         glossary = st.session_state.get("glossary", [])
         if not glossary:
             st.write("No glossary entries yet.")
-                    else:
+        else:
             term_search = st.text_input(
                 "Search glossary terms",
                 value="",
@@ -908,7 +1040,7 @@ def main() -> None:
             answer_mode=sidebar_state["answer_mode"],
             read_only=True,
         )
-        render_translation_and_export_controls(handler=None, read_only=True)
+        render_export_controls(read_only=True)
         st.markdown("---")
         st.markdown(
             "Built with ❤️ using Streamlit, Qdrant, and Groq | Supports Malayalam, Tamil, Telugu, Kannada, and Tulu",
@@ -938,7 +1070,7 @@ def main() -> None:
         read_only=False,
     )
 
-    render_translation_and_export_controls(handler=handler, read_only=False)
+    render_export_controls(read_only=False)
 
 st.markdown("---")
 st.markdown(

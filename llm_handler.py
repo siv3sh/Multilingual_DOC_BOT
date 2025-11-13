@@ -460,33 +460,58 @@ USER QUESTION: {query_part}"""
     ) -> str:
         """
         Translate the provided text into the requested language.
+        
+        Args:
+            text: Text to translate
+            target_language: Target language (can be code like 'en' or name like 'English')
+            source_language: Optional source language name for context
         """
-        if not text.strip():
+        if not text or not text.strip():
             return ""
 
-        if target_language not in self.TRANSLATABLE_LANGUAGES:
+        # Convert language code to name if needed
+        if len(target_language) <= 3:
+            # It's a language code, convert to name
+            target_lang_name = get_language_name(target_language)
+            if target_lang_name == 'Unknown':
+                target_lang_name = target_language
+        else:
+            # It's already a language name
+            target_lang_name = target_language
+        
+        # Check if target language is supported
+        if target_lang_name not in self.TRANSLATABLE_LANGUAGES:
             return text
 
         try:
-            source_clause = (
-                f"The original is in {source_language}. " if source_language else ""
-            )
             system_prompt = (
-                "You are a precise translation assistant. "
-                "Preserve meaning and tone, avoid explanatory notes, and do not add citations unless present in the input."
+                f"You are a professional translation engine. Your task is to translate text into {target_lang_name}. "
+                f"IMPORTANT: You MUST translate the text. Do NOT return the original text. "
+                f"Provide ONLY the translated text in {target_lang_name}, without any additional commentary, explanations, or notes. "
+                "Preserve the original meaning, tone, and structure. Keep all numbers, dates, and proper nouns as they are."
             )
-            user_prompt = (
-                f"{source_clause}"
-                f"Translate the following text into {target_language}. "
-                "Keep formatting (bullet points, numbering, citations) intact.\n\n"
-                f"TEXT:\n{text}"
-            )
+            
+            user_prompt = f"Translate the following text to {target_lang_name}:\n\n{text}"
+            
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ]
             response = self._make_api_request(messages, max_retries=3)
-            return response.strip() if response else ""
+            translated = response.strip() if response else ""
+            
+            # If translation failed or returned empty, return empty string
+            if not translated:
+                print(f"Translation returned empty response for text: {text[:50]}...")
+                return ""
+            
+            # Check if the translation is actually different from the original
+            # (allowing for minor whitespace differences)
+            if translated.strip() == text.strip():
+                print(f"Warning: Translation returned same text as original. This might indicate the text is already in {target_lang_name}.")
+                # Still return it, but log the warning
+            
+            return translated
         except Exception as exc:
             print(f"Translation failed: {exc}")
             return ""
